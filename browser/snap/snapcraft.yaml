@@ -8,10 +8,10 @@ grade: devel
 confinement: strict
 
 plugs:
-  proxy-observe:
+  network-proxy-state:
     interface: confdb
     account: f22PSauKuNkwQTM9Wz67ZCjNACuSjjhN
-    view: network/observe-proxy
+    view: network/proxy-state
 
 parts:
   browser:
@@ -29,4 +29,4 @@ apps:
     command: /bin/browser-cli
     plugs:
       - network
-      - proxy-observe
+      - network-proxy-state

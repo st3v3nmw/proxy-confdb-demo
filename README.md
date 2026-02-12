@@ -75,11 +75,11 @@ timestamp: <date -Iseconds --utc>
 
 Snaps do not act on the raw configuration in the storage directly. This is mediated by confdb views, allowing the views & storage to evolve independently.
 
-We'll create two views: `control-proxy` for managing proxy settings, and `observe-proxy` for consuming them. The former has `read-write` access while the latter is `read`-only.
+We'll create two views: `proxy-admin` for managing proxy settings, and `proxy-state` for consuming them. The former has `read-write` access while the latter is `read`-only.
 
 ```yaml
 views:
-  control-proxy:
+  proxy-admin:
     rules:
       -
         access: read-write
@@ -92,7 +92,7 @@ views:
             storage: bypass
         request: {protocol}
         storage: proxy.{protocol}
-  observe-proxy:
+  proxy-state:
     rules:
       -
         access: read
@@ -154,30 +154,30 @@ The roles are defined as plugs in the respective snap's `snapcraft.yaml` like so
 
 ```yaml
 plugs:
-  proxy-control:
+  network-proxy-admin:
     interface: confdb
     account: <your-account-id>
-    view: network/control-proxy
+    view: network/proxy-admin
     role: custodian
 
-  proxy-observe:
+  network-proxy-state:
     interface: confdb
     account: <your-account-id>
-    view: network/observe-proxy
+    view: network/proxy-state
     role: custodian
 ```
 
 > [!IMPORTANT]
-> Here, `net-ctrl` is the custodian for both `proxy-control` & `proxy-observe`. This is because a view must have at least one custodian snap.
+> Here, `net-ctrl` is the custodian for both `network-proxy-admin` & `network-proxy-state`. This is because a view must have at least one custodian snap.
 
 **browser** (observer/reader)
 
 ```yaml
 plugs:
-  proxy-observe:
+  network-proxy-state:
     interface: confdb
     account: <your-account-id>
-    view: network/observe-proxy
+    view: network/proxy-state
 ```
 
 > [!NOTE]
@@ -264,19 +264,19 @@ browser 0.2 installed
 Next, we'll connect the [interfaces](https://snapcraft.io/docs/confdb-interface) for both snaps.
 
 ```console
-$ sudo snap connect net-ctrl:proxy-control
-$ sudo snap connect net-ctrl:proxy-observe
+$ sudo snap connect net-ctrl:network-proxy-admin
+$ sudo snap connect net-ctrl:network-proxy-state
 $ snap connections net-ctrl
-Interface  Plug                    Slot     Notes
-confdb     net-ctrl:proxy-control  :confdb  manual
-confdb     net-ctrl:proxy-observe  :confdb  manual
-home       net-ctrl:home           :home    -
+Interface  Plug                          Slot     Notes
+confdb     net-ctrl:network-proxy-admin  :confdb  manual
+confdb     net-ctrl:network-proxy-state  :confdb  manual
+home       net-ctrl:home                 :home    -
 
-$ sudo snap connect browser:proxy-observe
+$ sudo snap connect browser:network-proxy-state
 $ snap connections browser
-Interface  Plug                   Slot      Notes
-confdb     browser:proxy-observe  :confdb   manual
-network    browser:network        :network  -
+Interface  Plug                         Slot      Notes
+confdb     browser:network-proxy-state  :confdb   manual
+network    browser:network              :network  -
 ```
 
 > [!NOTE]
@@ -293,13 +293,13 @@ The commands take the form:
   - `snapctl get --view :<view-name> [<dotted.path>] [-d]`
 
 ```console
-$ sudo snap run --shell net-ctrl
-# snapctl set --view :proxy-control https.url=https://proxy.example.com
-# snapctl set --view :proxy-control ftp.url=ftp://proxy.example.com
+$ sudo snap run --shell net-ctrl.sh
+# snapctl set --view :network-proxy-admin https.url=https://proxy.example.com
+# snapctl set --view :network-proxy-admin ftp.url=ftp://proxy.example.com
 # exit
 
 $ snap run --shell browser
-# snapctl get --view :proxy-observe
+# snapctl get --view :network-proxy-state
 {
     "ftp": {
         "bypass": [
@@ -315,7 +315,7 @@ $ snap run --shell browser
     }
 }
 
-# snapctl get --view :proxy-observe https
+# snapctl get --view :network-proxy-state https
 {
     "bypass": [
         "*://*.company.internal"
@@ -332,13 +332,13 @@ The commands take the form:
   - `snap get <your-account-id>/<confdb-schema>/<view> [<dotted.path>] [-d]`
 
 ```console
-$ sudo snap set <your-account-id>/network/control-proxy 'https.bypass=["https://127.0.0.1", "https://localhost"]'
+$ sudo snap set <your-account-id>/network/proxy-admin 'https.bypass=["https://127.0.0.1", "https://localhost"]'
 
-$ sudo snap get <your-account-id>/network/observe-proxy ftp
+$ sudo snap get <your-account-id>/network/proxy-state ftp
 Key         Value
 ftp.bypass  [*://*.company.internal]
 ftp.url     ftp://proxy.example.com
-$ sudo snap get <your-account-id>/network/observe-proxy ftp -d
+$ sudo snap get <your-account-id>/network/proxy-state ftp -d
 {
     "ftp": {
         "bypass": [
@@ -347,7 +347,7 @@ $ sudo snap get <your-account-id>/network/observe-proxy ftp -d
         "url": "ftp://proxy.example.com"
     }
 }
-$ sudo snap get <your-account-id>/network/control-proxy ftp.url
+$ sudo snap get <your-account-id>/network/proxy-admin ftp.url
 ftp://proxy.example.com
 ```
 
@@ -355,7 +355,7 @@ ftp://proxy.example.com
 
 ```console
 $ sudo curl --unix-socket /run/snapd.socket \
-  "http://localhost/v2/confdb/<your-account-id>/network/control-proxy" \
+  "http://localhost/v2/confdb/<your-account-id>/network/proxy-admin" \
   -X PUT -d '{"https.bypass": ["https://127.0.0.1", "https://localhost"]}' -s | jq
 {
   "type": "async",
@@ -372,7 +372,7 @@ $ sudo curl --unix-socket /run/snapd.socket "http://localhost/v2/changes/2510" -
   "result": {
     "id": "2510",
     "kind": "set-confdb",
-    "summary": "Set confdb through \"<your-account-id>/network/control-proxy\"",
+    "summary": "Set confdb through \"<your-account-id>/network/proxy-admin\"",
     "status": "Done",
     "tasks": [
       ...
@@ -384,7 +384,7 @@ $ sudo curl --unix-socket /run/snapd.socket "http://localhost/v2/changes/2510" -
 }
 
 $ sudo curl --unix-socket /run/snapd.socket \
-  "http://localhost/v2/confdb/<your-account-id>/network/observe-proxy" -s | jq
+  "http://localhost/v2/confdb/<your-account-id>/network/proxy-state" -s | jq
 {
   "type": "async",
   "status-code": 202,
@@ -400,7 +400,7 @@ $ sudo curl --unix-socket /run/snapd.socket "http://localhost/v2/changes/2512" -
   "result": {
     "id": "2512",
     "kind": "get-confdb",
-    "summary": "Get confdb through \"<your-account-id>/network/observe-proxy\"",
+    "summary": "Get confdb through \"<your-account-id>/network/proxy-state\"",
     "status": "Done",
     "ready": true,
     "spawn-time": "2025-03-25T12:50:25.159691967+03:00",
@@ -437,22 +437,22 @@ Snaps can implement hooks to manage and observe confdb views. The hooks are `cha
 > [!TIP]
 > When debugging failing hooks, run `snap changes` and then `snap tasks <N>` to get the error details.
 
-### browser/observe-view-proxy-observe (`observe-view-<plug>`)
+### browser/observe-view-network-proxy-state (`observe-view-<plug>`)
 
-This hook allows the browser snap to watch for changes to the `observe` proxy view. [The hook](./browser/snap/hooks/observe-view-proxy-observe) outputs the new configuration to `$SNAP_COMMON/new-config.json`.
+This hook allows the browser snap to watch for changes to the proxy state view. [The hook](./browser/snap/hooks/observe-view-network-proxy-state) outputs the new configuration to `$SNAP_COMMON/new-config.json`.
 
 ```console
-$ sudo net-ctrl.sh -c 'snapctl set --view :proxy-control https.url="http://localhost:3199/"'
+$ sudo net-ctrl.sh -c 'snapctl set --view :network-proxy-admin https.url="http://localhost:3199/"'
 $ snap changes
 ID    Status  Spawn                   Ready                   Summary
 [...]
-2494  Done    today at 11:20 EAT      today at 11:20 EAT      Set confdb through "<your-account-id>/network/control-proxy"
+2494  Done    today at 11:20 EAT      today at 11:20 EAT      Set confdb through "<your-account-id>/network/proxy-admin"
 $ snap tasks 2494
 Status  Spawn               Ready               Summary
 Done    today at 11:20 EAT  today at 11:20 EAT  Clears the ongoing confdb transaction from state (on error)
-Done    today at 11:20 EAT  today at 11:20 EAT  Run hook change-view-proxy-control of snap "net-ctrl"
-Done    today at 11:20 EAT  today at 11:20 EAT  Run hook observe-view-proxy-observe of snap "browser"
-Done    today at 11:20 EAT  today at 11:20 EAT  Commit changes to confdb (<your-account-id>/network/control-proxy)
+Done    today at 11:20 EAT  today at 11:20 EAT  Run hook change-view-network-proxy-admin of snap "net-ctrl"
+Done    today at 11:20 EAT  today at 11:20 EAT  Run hook observe-view-network-proxy-state of snap "browser"
+Done    today at 11:20 EAT  today at 11:20 EAT  Commit changes to confdb (<your-account-id>/network/proxy-admin)
 Done    today at 11:20 EAT  today at 11:20 EAT  Clears the ongoing confdb transaction from state
 
 $ cat /var/snap/browser/common/new-config.json
@@ -474,41 +474,41 @@ $ cat /var/snap/browser/common/new-config.json
 }
 ```
 
-### net-ctrl/change-view-proxy-control (`change-view-<plug>`)
+### net-ctrl/change-view-network-proxy-admin (`change-view-<plug>`)
 
 #### Example 1: Validation
 
-You can use a `change-view-<plug>` hook to do data validation. For instance, [the hook](./net-ctrl/snap/hooks/change-view-proxy-control) checks that `{protocol}.url` is a valid URL.
+You can use a `change-view-<plug>` hook to do data validation. For instance, [the hook](./net-ctrl/snap/hooks/change-view-network-proxy-admin) checks that `{protocol}.url` is a valid URL.
 
 ```console
-$ sudo net-ctrl.sh -c 'snapctl set --view :proxy-control https.url="not a url?"'
+$ sudo net-ctrl.sh -c 'snapctl set --view :network-proxy-admin https.url="not a url?"'
 $ snap changes
 ID    Status  Spawn                   Ready                   Summary
 [...]
-2495  Error   today at 11:21 EAT      today at 11:21 EAT      Set confdb through "<your-account-id>/network/control-proxy"
+2495  Error   today at 11:21 EAT      today at 11:21 EAT      Set confdb through "<your-account-id>/network/proxy-admin"
 $ snap tasks 2495
 Status  Spawn               Ready               Summary
 Undone  today at 11:21 EAT  today at 11:21 EAT  Clears the ongoing confdb transaction from state (on error)
-Error   today at 11:21 EAT  today at 11:21 EAT  Run hook change-view-proxy-control of snap "net-ctrl"
-Hold    today at 11:21 EAT  today at 11:21 EAT  Run hook observe-view-proxy-observe of snap "browser"
-Hold    today at 11:21 EAT  today at 11:21 EAT  Commit changes to confdb (<your-account-id>/network/control-proxy)
+Error   today at 11:21 EAT  today at 11:21 EAT  Run hook change-view-network-proxy-admin of snap "net-ctrl"
+Hold    today at 11:21 EAT  today at 11:21 EAT  Run hook observe-view-network-proxy-state of snap "browser"
+Hold    today at 11:21 EAT  today at 11:21 EAT  Commit changes to confdb (<your-account-id>/network/proxy-admin)
 Hold    today at 11:21 EAT  today at 11:21 EAT  Clears the ongoing confdb transaction from state
 
 ......................................................................
-Run hook change-view-proxy-control of snap "net-ctrl"
+Run hook change-view-network-proxy-admin of snap "net-ctrl"
 
-2025-03-25T11:21:21+03:00 ERROR run hook "change-view-proxy-control": failed to validate url: not a url?
+2025-03-25T11:21:21+03:00 ERROR run hook "change-view-network-proxy-admin": failed to validate url: not a url?
 ```
 
 #### Example 2: Decoration
 
-You can also use a `change-view-<plug>` hook to do data decoration. For instance, [the hook](./net-ctrl/snap/hooks/change-view-proxy-control) ensures that internal company URLs are never proxied.
+You can also use a `change-view-<plug>` hook to do data decoration. For instance, [the hook](./net-ctrl/snap/hooks/change-view-network-proxy-admin) ensures that internal company URLs are never proxied.
 
 ```console
 $ sudo snap run --shell net-ctrl.sh
-# snapctl set --view :proxy-control 'https.bypass=["localhost"]'
+# snapctl set --view :network-proxy-admin 'https.bypass=["localhost"]'
 
-# snapctl get --view :proxy-control
+# snapctl get --view :network-proxy-admin
 {
     "ftp": {
         "bypass": [
@@ -622,7 +622,7 @@ $ docker run -d --name squid-container -e TZ=UTC -p 3128:3128 ubuntu/squid:5.2-2
 Point the `http/https` proxy configuration to the web proxy and then call `browser` with a proxied URL:
 
 ```console
-$ sudo net-ctrl.sh -c 'snapctl set --view :proxy-control https.url="http://localhost:3128/"'
+$ sudo net-ctrl.sh -c 'snapctl set --view :network-proxy-admin https.url="http://localhost:3128/"'
 $ browser "https://example.com"
 
 ╭──────────────────────────────────────────────────────────────────────────────────────────────╮

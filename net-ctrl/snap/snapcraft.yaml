@@ -8,16 +8,16 @@ grade: devel
 confinement: strict
 
 plugs:
-  proxy-control:
+  network-proxy-admin:
     interface: confdb
     account: f22PSauKuNkwQTM9Wz67ZCjNACuSjjhN
-    view: network/control-proxy
+    view: network/proxy-admin
     role: custodian
 
-  proxy-observe:
+  network-proxy-state:
     interface: confdb
     account: f22PSauKuNkwQTM9Wz67ZCjNACuSjjhN
-    view: network/observe-proxy
+    view: network/proxy-state
     role: custodian
 
 parts:
@@ -35,5 +35,5 @@ apps:
   sh:
     command: /bin/sh
     plugs:
-      - proxy-control
+      - network-proxy-admin
       - home

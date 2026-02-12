@@ -71,18 +71,18 @@ apps:
   sh:
     command: /bin/sh
     plugs:
-      - proxy-control
+      - network-proxy-admin
       - home    # New
 ```
 
-### Implement the `save-view-proxy-control` Hook
+### Implement the `save-view-network-proxy-admin` Hook
 
 This hook reads the current confdb state and writes it back to the external file, ensuring that any changes made through the confdb interface are preserved in the authoritative external source.
 
 > [!IMPORTANT]
 > A `save-view-<plug>` hook must exist for a `load-view-<plug>` hook to work.
 
-Create a `snaps/hooks/save-view-proxy-control` file in the net-ctrl snap:
+Create a `snaps/hooks/save-view-network-proxy-admin` file in the net-ctrl snap:
 
 ```python
 #!/usr/bin/env python3
@@ -97,7 +97,7 @@ config_file = "/home/<user>/network.env"  # TODO: Update <user>
 
 # Get entire view in one call
 result = subprocess.run(
-    ["snapctl", "get", "--view", ":proxy-control", "-d"],
+    ["snapctl", "get", "--view", ":network-proxy-admin", "-d"],
     capture_output=True,
     text=True,
 )
@@ -154,7 +154,7 @@ with open(config_file, "w") as f:
 Make the hook executable:
 
 ```console
-$ chmod +x net-ctrl/snap/hooks/save-view-proxy-control
+$ chmod +x net-ctrl/snap/hooks/save-view-network-proxy-admin
 ```
 
 > [!NOTE]
@@ -181,7 +181,7 @@ $ snap connect net-ctrl:home
 Change the `https` proxy URL with `snap set`:
 
 ```console
-$ snap set <your-account-id>/network/control-proxy 'https.url="http://localhost:3199/"'
+$ snap set <your-account-id>/network/proxy-admin 'https.url="http://localhost:3199/"'
 
 $ cat ~/network.env
 HTTP_PROXY=http://proxy.example.com:8080
@@ -189,13 +189,13 @@ HTTPS_PROXY=http://localhost:3199/
 NO_PROXY=*://*.company.internal
 ```
 
-When you set the confdb value, snapd automatically triggered the `save-view-proxy-control` hook. The hook read the current confdb state and updated the external file, changing only the `HTTPS_PROXY` line while preserving the existing HTTP_PROXY and NO_PROXY values.
+When you set the confdb value, snapd automatically triggered the `save-view-network-proxy-admin` hook. The hook read the current confdb state and updated the external file, changing only the `HTTPS_PROXY` line while preserving the existing HTTP_PROXY and NO_PROXY values.
 
-### Implement the `load-view-proxy-control` Hook
+### Implement the `load-view-network-proxy-admin` Hook
 
 Now we'll implement the complementary hook that reads from the external source and populates the confdb. This closes the loop between the external source and the confdb view.
 
-Create a `snaps/hooks/load-view-proxy-control` file in the net-ctrl snap:
+Create a `snaps/hooks/load-view-network-proxy-admin` file in the net-ctrl snap:
 
 ```python
 #!/usr/bin/env python3
@@ -242,14 +242,14 @@ for protocol, env_key in [
 
 # Set
 if settings:
-    cmd = ["snapctl", "set", "--view", ":proxy-control"] + settings
+    cmd = ["snapctl", "set", "--view", ":network-proxy-admin"] + settings
     subprocess.run(cmd)
 ```
 
 Make the hook executable:
 
 ```console
-$ chmod +x net-ctrl/snap/hooks/load-view-proxy-control
+$ chmod +x net-ctrl/snap/hooks/load-view-network-proxy-admin
 ```
 
 #### Testing
@@ -265,7 +265,7 @@ $ snap install net-ctrl_0.1_amd64.snap --dangerous --devmode
 Get the updated proxy config with `snap get`:
 
 ```console
-$ snap get <your-account-id>/network/control-proxy -d
+$ snap get <your-account-id>/network/proxy-admin -d
 {
     "http": {
         "bypass": [
@@ -282,7 +282,7 @@ $ snap get <your-account-id>/network/control-proxy -d
 }
 ```
 
-When you get the confdb view, snapd automatically called the `load-view-proxy-control` hook to populate the confdb view. It read from `~/network.env`, parsed the proxy settings, and populated the confdb view with the external configuration.
+When you get the confdb view, snapd automatically called the `load-view-network-proxy-admin` hook to populate the confdb view. It read from `~/network.env`, parsed the proxy settings, and populated the confdb view with the external configuration.
 
 🎉 **Congratulations!** You've successfully integrated external configuration sources with confdb.
 

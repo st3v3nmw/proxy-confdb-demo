@@ -6,7 +6,7 @@ import subprocess
 import validators
 
 
-cmd = f"snapctl get --view :proxy-control -d"
+cmd = f"snapctl get --view :network-proxy-admin -d"
 proc = subprocess.run(cmd.split(), capture_output=True, text=True)
 if proc.returncode != 0:
     cmd = f"snapctl fail {proc.stderr}"
@@ -34,6 +34,6 @@ for protocol, proxy_config in config.items():
         # save changes
         bypass_json = json.dumps(bypass, separators=(',', ':'))
         subprocess.run([
-            "snapctl", "set", "--view", "-t", ":proxy-control",
+            "snapctl", "set", "--view", "-t", ":network-proxy-admin",
             f"{protocol}.bypass={bypass_json}"
         ])
