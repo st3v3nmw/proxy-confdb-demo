@@ -82,7 +82,7 @@ This hook reads the current confdb state and writes it back to the external file
 > [!IMPORTANT]
 > A `save-view-<plug>` hook must exist for a `load-view-<plug>` hook to work.
 
-Create a `snaps/hooks/save-view-network-proxy-admin` file in the net-ctrl snap:
+Create a `snap/hooks/save-view-network-proxy-admin` file in the net-ctrl snap:
 
 ```python
 #!/usr/bin/env python3
@@ -195,7 +195,7 @@ When you set the confdb value, snapd automatically triggered the `save-view-netw
 
 Now we'll implement the complementary hook that reads from the external source and populates the confdb. This closes the loop between the external source and the confdb view.
 
-Create a `snaps/hooks/load-view-network-proxy-admin` file in the net-ctrl snap:
+Create a `snap/hooks/load-view-network-proxy-admin` file in the net-ctrl snap:
 
 ```python
 #!/usr/bin/env python3
