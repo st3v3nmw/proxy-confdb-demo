@@ -7,7 +7,7 @@ revision: "1"  # Bump the revision number after updating the assertion
 # Update the timestamp when modifying the assertion (run: date -Iseconds --utc)
 timestamp: <timestamp>
 views:
-  control-proxy:
+  proxy-admin:
     rules:
       - request: "{protocol}"
         storage: "proxy.{protocol}"
@@ -17,7 +17,7 @@ views:
             storage: url
           - request: bypass
             storage: bypass
-  observe-proxy:
+  proxy-state:
     rules:
       - request: https
         storage: proxy.https

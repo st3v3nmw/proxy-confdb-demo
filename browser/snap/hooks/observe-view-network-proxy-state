@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-value=$(snapctl get --view :proxy-observe -d)
+value=$(snapctl get --view :network-proxy-state -d)
 echo "$value" > "$SNAP_COMMON"/new-config.json
 
 # for instance, you can use this hook to watch for configuration changes

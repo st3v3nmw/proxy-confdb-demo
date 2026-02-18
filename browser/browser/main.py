@@ -8,7 +8,7 @@ from connect.utils.terminal.markdown import render
 
 
 def get_proxy_config():
-    cmd = f"snapctl get --view :proxy-observe -d"
+    cmd = f"snapctl get --view :network-proxy-state -d"
     proc = subprocess.run(cmd.split(), capture_output=True, text=True)
     if proc.returncode != 0:
         raise RuntimeError(proc.stderr)
